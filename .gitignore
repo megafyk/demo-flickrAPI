@@ -15,5 +15,5 @@ pyvenv.cfg
 .venv
 pip-selfcheck.json
 .vscode
-secret-data
+__pycache__
 # End of https://www.gitignore.io/api/virtualenv

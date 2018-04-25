@@ -1,0 +1,5 @@
+{
+    "api_key": "Your api key here",
+    "api_secret": "Your api secret here",
+    "api_url": "https://api.flickr.com/services/rest/"
+}
