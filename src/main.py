@@ -65,7 +65,7 @@ def print_choose_options():
     print('1. download by link')
     print('2. download by links from file')
     option = input('Enter your option: ')
-    return choose_options(option)
+    choose_options(option)
 
 
 if __name__ == '__main__':
@@ -87,7 +87,7 @@ if __name__ == '__main__':
             params['photo_id'] = get_photo_id(url)
             print('Processing...')
             r = requests.get(api_data_reader.api_url, params=params)
-            if(r.status_code == 200):
+            if r.status_code == 200 and ('sizes' in r.json()):
                 data = r.json()
                 if(data['sizes']['candownload'] == 1):
                     isAutoDownload = True
@@ -98,8 +98,9 @@ if __name__ == '__main__':
                     download_img(data['sizes']['size'][-1]['source'],
                                  app_data_reader.path_saved)
             else:
+                data = r.json()
                 print('There is somethings wrong - Error code: %d' %
-                      r.status_code)
+                      data['code'])
         else:
             print('Wrong url...')
         isContinue = input('Do you want to continue? (y/n): ').lower() == 'y'
