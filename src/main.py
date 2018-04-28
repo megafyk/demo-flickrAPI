@@ -35,7 +35,8 @@ def download_links():
 
 
 def get_photo_id(url):
-    return url.rsplit('/', 4)[1]
+    regex = re.compile(r'(\/)(\d+)(\/)')
+    return regex.search(url).group(2)
 
 
 def is_valid_url(url):
