@@ -1,12 +1,20 @@
 import json
 import os
 import math
+import pathlib
 import re
 import requests
 import shutil
+from colorama import init, Fore
+from enum import Enum
 from data_reader.reader import ApiDataReader
 from data_reader.reader import AppDataReader
 from progress_bar.progress_bar import printProgressBar
+
+
+class Option(Enum):
+    DOWNLOAD_LINK = 0
+    DOWNLOAD_LINKS = 1
 
 
 def download_img(url, path_saved):
@@ -16,7 +24,7 @@ def download_img(url, path_saved):
         with open(os.path.join(path_saved, filename), 'wb') as f:
             chunk_size = 128
             l = math.ceil(len(r.content)/chunk_size)
-            print('+[Downloading] ' + filename)
+            print(Fore.LIGHTBLUE_EX + '[Downloading] ' + filename)
             printProgressBar(0, l, prefix='Progress:',
                              suffix='Complete', length=50)
             for i, chunk in enumerate(r.iter_content(chunk_size=chunk_size)):
@@ -27,21 +35,62 @@ def download_img(url, path_saved):
 
 
 def download_link():
-    print('def download by link')
+    url = input('Enter your link: ')
+    if(is_valid_url(url)):
+        urls_dict[get_author_id(url)] = [url]
+    else:
+        print(Fore.RED + 'Wrong url...')
+        pass
 
 
 def download_links():
-    print('def download by links from file')
+    file_path = input('Enter your file path: ')
+    p = pathlib.Path(file_path)
+    if p.is_file():
+        with open(p) as f:
+            lines = f.readlines()
+            for i, url in enumerate(lines):
+                url = url.rstrip()
+                if is_valid_url(url):
+                    author_id = get_author_id(url)
+                    if author_id in urls_dict:
+                        if url in urls_dict[author_id]:
+                            print(Fore.YELLOW + 'Duplicate url in lines: %d' % i)
+                        else:
+                            urls_dict[author_id].append(url)
+                    else:
+                        urls_dict[author_id] = [url]
+                else:
+                    print(Fore.RED + 'Wrong url in line: %d' % i)
+        f.close()
+    else:
+        print(Fore.RED + 'Wrong file path.')
+
+
+def get_author_id(url):
+    regex = re.compile(r'(photos)(\/)([a-zA-Z0-9]+([@_ -]?[a-zA-Z0-9])*)(\/)')
+    return regex.search(url).group(3)
+
+
+def get_author_info(url):
+    params = {
+        'method': 'flickr.urls.lookupUser',
+        'api_key': api_data_reader.api_key,
+        'url': url,
+        'format': 'json',
+        'nojsoncallback': '1'
+    }
+    return requests.get(api_data_reader.api_url, params=params).json()
 
 
 def get_photo_id(url):
-    return url.rsplit('/', 4)[1]
+    regex = re.compile(r'(\/)(\d+)(\/)')
+    return regex.search(url).group(2)
 
 
 def is_valid_url(url):
     regex = re.compile(
-        r'^(?:http|ftp)s?://'  # http:// or https://
-        # domain...
+        r'^(?:http|ftp)s?://'  # http:// or https://# domain...
         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'
         r'localhost|'  # localhost...
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
@@ -57,18 +106,19 @@ def choose_options(num_option):
         2: lambda: "download_none"
     }
     func = options.get(num_option, lambda: "nothing")
-    return func
+    return func()
 
 
 def print_choose_options():
     print('Please choose an option: ')
-    print('1. download by link')
-    print('2. download by links from file')
+    print('0. download by link')
+    print('1. download by links from file')
     option = input('Enter your option: ')
-    return choose_options(option)
+    choose_options(int(option))
 
 
 if __name__ == '__main__':
+    init(autoreset=True)
     api_data_reader = ApiDataReader(filepath=os.path.join(
         os.path.dirname(os.path.__file__), '../src/data/api_data.json'))
     app_data_reader = AppDataReader(filepath=os.path.join(
@@ -81,27 +131,58 @@ if __name__ == '__main__':
         'nojsoncallback': '1'
     }
     while True:
-        print_choose_options()
-        url = input('Enter your link: ')
-        if(is_valid_url(url)):
-            params['photo_id'] = get_photo_id(url)
+        urls_dict = {}
+        try:
+            print_choose_options()
+        except Exception as ex:
+            print(Fore.RED + str(ex))
+        else:
             print('Processing...')
-            r = requests.get(api_data_reader.api_url, params=params)
-            if(r.status_code == 200):
-                data = r.json()
-                if(data['sizes']['candownload'] == 1):
+            num_urls_auto = sum(len(v) for v in urls_dict.values())
+            num_urls_not_auto = num_urls_success = 0
+            for key in urls_dict:
+                url_temp = next(iter(urls_dict[key]))
+                params['photo_id'] = get_photo_id(url_temp)
+                r_temp = requests.get(api_data_reader.api_url, params=params)
+                data_temp = r_temp.json()
+                if(data_temp['stat'] == 'fail'):
+                    print(Fore.RED + 'Error url %s' % url_temp)
+                    continue
+                user_temp = get_author_info(url_temp)
+                if data_temp['sizes']['candownload'] == 1:
                     isAutoDownload = True
                 else:
                     isAutoDownload = input(
-                        'Download automacally? (y/n): ') == 'y'
+                        'Set download automacally images for %s? (y/n): ' % user_temp['user']['username']['_content']) == 'y'
                 if isAutoDownload:
-                    download_img(data['sizes']['size'][-1]['source'],
-                                 app_data_reader.path_saved)
-            else:
-                print('There is somethings wrong - Error code: %d' %
-                      r.status_code)
-        else:
-            print('Wrong url...')
+                    print(Fore.LIGHTMAGENTA_EX +
+                          user_temp['user']['username']['_content'])
+                    for url in urls_dict[key]:
+                        params['photo_id'] = get_photo_id(url)
+                        r = requests.get(
+                            api_data_reader.api_url, params=params)
+                        data = r.json()
+                        if(data['stat'] == 'fail'):
+                            print(Fore.RED + 'Error url %s' % url)
+                            continue
+                        if r.status_code == 200 and ('sizes' in r.json()):
+                            try:
+                                download_img(data['sizes']['size'][-1]['source'],
+                                             app_data_reader.path_saved)
+                                num_urls_success += 1
+                            except Exception as e:
+                                print(Fore.RED + str(e))
+                        else:
+                            print(Fore.RED + 'There is somethings wrong - Error code: %d' %
+                                  data['code'])
+                else:
+                    num_urls_not_auto += len(urls_dict[key])
+                    num_urls_auto -= len(urls_dict[key])
+                    pass
+            print(Fore.CYAN + 'urls automatically: %d' % num_urls_auto)
+            print(Fore.YELLOW + 'urls not automatically: %d' %
+                  num_urls_not_auto)
+            print(Fore.GREEN + 'urls success: %d' % num_urls_success)
         isContinue = input('Do you want to continue? (y/n): ').lower() == 'y'
         if isContinue != True:
             break
