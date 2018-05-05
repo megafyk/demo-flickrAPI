@@ -1,5 +1,5 @@
 {
-    "api_key": "806507c783c26a1f318e5572240b9837",
-    "api_secret": "41504a081a6d8e0a",
+    "api_key": "Your Api Key",
+    "api_secret": "Your Api Secret",
     "api_url": "https://api.flickr.com/services/rest/"
 }
