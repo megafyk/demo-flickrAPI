@@ -11,7 +11,7 @@ App downloads highest resolution flickr images which allowed permission by owner
 
 App requires **[python 3.x](https://www.python.org)** to run.
 
-1. In **src/data** config json value in 2 file.
+1. In **src/data** create 2 json files
 
     - api_data.json
 
