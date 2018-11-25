@@ -7,6 +7,8 @@ import requests
 import shutil
 from colorama import init, Fore
 from enum import Enum
+
+from clipboard_writer.writer import ClipboardWriter
 from data_reader.reader import ApiDataReader
 from data_reader.reader import AppDataReader
 from progress_bar.progress_bar import printProgressBar
@@ -83,9 +85,21 @@ def download_links():
         print(Fore.RED + 'Wrong file path.')
 
 
+def write_url():
+    """  """
+    file_path = input('Enter your file path: ')
+    p = pathlib.Path(file_path)
+    if p.is_file():
+        writer = ClipboardWriter(file_path)
+        writer.run()
+    else:
+        print(Fore.RED + 'Wrong file path.')
+    return
+
+
 def get_author_id(url):
     """Get flick author id from url.
-    
+
     Parameters
     ----------
     url : str
@@ -102,17 +116,17 @@ def get_author_id(url):
 
 def get_author_info(url):
     """Get flick author info from url.
-    
+
     Parameters
     ----------
     url : str
         Image url.
-    
+
     Returns
     -------
     json
         Flick author info.
-    
+
     """
     params = {
         'method': 'flickr.urls.lookupUser',
@@ -126,17 +140,17 @@ def get_author_info(url):
 
 def get_photo_id(url):
     """Get flick photo id from url.
-    
+
     Parameters
     ----------
     url : str
         Image url.
-    
+
     Returns
     -------
     json
         Flick photo id.
-    
+
     """
     regex = re.compile(r'(\/)(\d+)(\/)')
     return regex.search(url).group(2)
@@ -144,17 +158,17 @@ def get_photo_id(url):
 
 def is_valid_url(url):
     """Validate url.
-    
+
     Parameters
     ----------
     url : str
         Image url.
-    
+
     Returns
     -------
     bool
         True if url is valid, False otherwise.
-    
+
     """
     regex = re.compile(
         r'^(?:http|ftp)s?://'  # http:// or https://# domain...
@@ -168,23 +182,24 @@ def is_valid_url(url):
 
 def choose_options(num_option):
     """Select feature when start app.
-    
+
     Parameters
     ----------
     num_options : int
         0 is download an image
         1 is download multiple images from file 
-        2 is read url from clipboard
+        2 is write url to file from clipboard
     Returns
     -------
     func:
         Function selected.
-    
+
     """
     options = {
         0: download_link,
         1: download_links,
-        2: lambda: "download_none"
+        2: write_url,
+        3: lambda: "download_none"
     }
     func = options.get(num_option, lambda: "nothing")
     return func()
@@ -192,11 +207,12 @@ def choose_options(num_option):
 
 def print_choose_options():
     """Get input selection feature from user.
-    
+
     """
     print('Please choose an option: ')
     print('0. download by link')
     print('1. download by links from file')
+    print('2. write clipboard url to file')
     option = input('Enter your option: ')
     choose_options(int(option))
 
@@ -219,49 +235,52 @@ if __name__ == '__main__':
         except Exception as ex:
             print(Fore.RED + str(ex))
         else:
-            # Dow
+            # Download
             print('Processing...')
             num_urls_auto = sum(len(v) for v in urls_dict.values())
             num_urls_not_auto = num_urls_success = 0
-            for key in urls_dict:
-                url_temp = next(iter(urls_dict[key]))
-                params['photo_id'] = get_photo_id(url_temp)
-                r_temp = requests.get(api_data_reader.api_url, params=params)
-                data_temp = r_temp.json()
-                if(data_temp['stat'] == 'fail'):
-                    print(Fore.RED + 'Error url %s' % url_temp)
-                    continue
-                user_temp = get_author_info(url_temp)
-                if data_temp['sizes']['candownload'] == 1:
-                    isAutoDownload = True
-                else:
-                    isAutoDownload = input(
-                        'Set download automacally images for %s? (y/n): ' % user_temp['user']['username']['_content']) == 'y'
-                if isAutoDownload:
-                    print(Fore.LIGHTMAGENTA_EX +
-                          user_temp['user']['username']['_content'])
-                    for url in urls_dict[key]:
-                        params['photo_id'] = get_photo_id(url)
-                        r = requests.get(
-                            api_data_reader.api_url, params=params)
-                        data = r.json()
-                        if(data['stat'] == 'fail'):
-                            print(Fore.RED + 'Error url %s' % url)
-                            continue
-                        if r.status_code == 200 and ('sizes' in r.json()):
-                            try:
-                                download_img(data['sizes']['size'][-1]['source'],
-                                             app_data_reader.path_saved)
-                                num_urls_success += 1
-                            except Exception as e:
-                                print(Fore.RED + str(e))
-                        else:
-                            print(Fore.RED + 'There is somethings wrong - Error code: %d' %
-                                  data['code'])
-                else:
-                    num_urls_not_auto += len(urls_dict[key])
-                    num_urls_auto -= len(urls_dict[key])
-                    pass
+            try:
+                for key in urls_dict:
+                    url_temp = next(iter(urls_dict[key]))
+                    params['photo_id'] = get_photo_id(url_temp)
+                    r_temp = requests.get(api_data_reader.api_url, params=params)
+                    data_temp = r_temp.json()
+                    if(data_temp['stat'] == 'fail'):
+                        print(Fore.RED + 'Error url %s' % url_temp)
+                        continue
+                    user_temp = get_author_info(url_temp)
+                    if data_temp['sizes']['candownload'] == 1:
+                        isAutoDownload = True
+                    else:
+                        isAutoDownload = input(
+                            'Set download automacally images for %s? (y/n): ' % user_temp['user']['username']['_content']) == 'y'
+                    if isAutoDownload:
+                        print(Fore.LIGHTMAGENTA_EX +
+                            user_temp['user']['username']['_content'])
+                        for url in urls_dict[key]:
+                            params['photo_id'] = get_photo_id(url)
+                            r = requests.get(
+                                api_data_reader.api_url, params=params)
+                            data = r.json()
+                            if(data['stat'] == 'fail'):
+                                print(Fore.RED + 'Error url %s' % url)
+                                continue
+                            if r.status_code == 200 and ('sizes' in r.json()):
+                                try:
+                                    download_img(data['sizes']['size'][-1]['source'],
+                                                app_data_reader.path_saved)
+                                    num_urls_success += 1
+                                except Exception as e:
+                                    print(Fore.RED + str(e))
+                            else:
+                                print(Fore.RED + 'There is somethings wrong - Error code: %d' %
+                                    data['code'])
+                    else:
+                        num_urls_not_auto += len(urls_dict[key])
+                        num_urls_auto -= len(urls_dict[key])
+                        pass
+            except KeyboardInterrupt:
+                pass
             print(Fore.CYAN + 'urls automatically: %d' % num_urls_auto)
             print(Fore.YELLOW + 'urls not automatically: %d' %
                   num_urls_not_auto)
