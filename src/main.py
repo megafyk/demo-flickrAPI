@@ -18,6 +18,16 @@ class Option(Enum):
 
 
 def download_img(url, path_saved):
+    """Download image from chunk.
+
+    Parameters
+    ----------
+    url : str
+        Image url.
+    path_saved : str
+        Directory where to save image file.
+
+    """
     r = requests.get(url, stream=True)
     if r.status_code == 200:
         filename = url.rsplit('/', 1)[1]
@@ -35,6 +45,9 @@ def download_img(url, path_saved):
 
 
 def download_link():
+    """Set one image url to chunk.
+
+    """
     url = input('Enter your link: ')
     if(is_valid_url(url)):
         urls_dict[get_author_id(url)] = [url]
@@ -44,6 +57,9 @@ def download_link():
 
 
 def download_links():
+    """Set multiple download url to chunk.
+
+    """
     file_path = input('Enter your file path: ')
     p = pathlib.Path(file_path)
     if p.is_file():
@@ -68,11 +84,36 @@ def download_links():
 
 
 def get_author_id(url):
+    """Get flick author id from url.
+    
+    Parameters
+    ----------
+    url : str
+        Image url.
+
+    Returns
+    -------
+    str
+        Flick author id
+    """
     regex = re.compile(r'(photos)(\/)([a-zA-Z0-9]+([@_ -]?[a-zA-Z0-9])*)(\/)')
     return regex.search(url).group(3)
 
 
 def get_author_info(url):
+    """Get flick author info from url.
+    
+    Parameters
+    ----------
+    url : str
+        Image url.
+    
+    Returns
+    -------
+    json
+        Flick author info.
+    
+    """
     params = {
         'method': 'flickr.urls.lookupUser',
         'api_key': api_data_reader.api_key,
@@ -84,11 +125,37 @@ def get_author_info(url):
 
 
 def get_photo_id(url):
+    """Get flick photo id from url.
+    
+    Parameters
+    ----------
+    url : str
+        Image url.
+    
+    Returns
+    -------
+    json
+        Flick photo id.
+    
+    """
     regex = re.compile(r'(\/)(\d+)(\/)')
     return regex.search(url).group(2)
 
 
 def is_valid_url(url):
+    """Validate url.
+    
+    Parameters
+    ----------
+    url : str
+        Image url.
+    
+    Returns
+    -------
+    bool
+        True if url is valid, False otherwise.
+    
+    """
     regex = re.compile(
         r'^(?:http|ftp)s?://'  # http:// or https://# domain...
         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'
@@ -100,6 +167,20 @@ def is_valid_url(url):
 
 
 def choose_options(num_option):
+    """Select feature when start app.
+    
+    Parameters
+    ----------
+    num_options : int
+        0 is download an image
+        1 is download multiple images from file 
+        2 is read url from clipboard
+    Returns
+    -------
+    func:
+        Function selected.
+    
+    """
     options = {
         0: download_link,
         1: download_links,
@@ -110,6 +191,9 @@ def choose_options(num_option):
 
 
 def print_choose_options():
+    """Get input selection feature from user.
+    
+    """
     print('Please choose an option: ')
     print('0. download by link')
     print('1. download by links from file')
@@ -119,10 +203,8 @@ def print_choose_options():
 
 if __name__ == '__main__':
     init(autoreset=True)
-    api_data_reader = ApiDataReader(filepath=os.path.join(
-        os.path.dirname(os.path.__file__), '../src/data/api_data.json'))
-    app_data_reader = AppDataReader(filepath=os.path.join(
-        os.path.dirname(os.path.__file__), '../src/data/app_data.json'))
+    api_data_reader = ApiDataReader(filepath='data/api_data.json')
+    app_data_reader = AppDataReader(filepath='data/app_data.json')
     params = {
         'method': 'flickr.photos.getSizes',
         'api_key': api_data_reader.api_key,
@@ -137,6 +219,7 @@ if __name__ == '__main__':
         except Exception as ex:
             print(Fore.RED + str(ex))
         else:
+            # Dow
             print('Processing...')
             num_urls_auto = sum(len(v) for v in urls_dict.values())
             num_urls_not_auto = num_urls_success = 0
