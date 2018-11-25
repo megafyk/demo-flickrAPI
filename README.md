@@ -6,6 +6,7 @@ App downloads highest resolution flickr images which allowed permission by owner
 
 - Download link one by one
 - Download multiple links set in file
+- Write url from clipboard to file
 
 ## Installation
 
